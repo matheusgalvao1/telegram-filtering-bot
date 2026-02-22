@@ -4,8 +4,8 @@ A Telegram userbot that filters messages from one group and forwards relevant me
 
 ## Features
 
-- Monitors a source Telegram group for passport availability alerts
-- Filters messages using regex patterns to find relevant alerts
+- Monitors a source Telegram group for specific messages
+- Filters messages using configurable patterns
 - Forwards matching messages to a destination group
 - Configurable via environment variables
 - Comprehensive logging and error handling
@@ -51,6 +51,9 @@ DESTINATION_CHAT_ID=-87654321  # Group to forward messages to
 
 # Session file name (optional, defaults to 'forwarder_session')
 SESSION_NAME=forwarder_session
+
+# Message filter patterns (separate multiple patterns with semicolon)
+FILTER_PATTERNS=🚨 ALERT: IMPORTANT;⚠️ WARNING: CHECK THIS;📢 NOTIFICATION: URGENT
 ```
 
 #### How to Get Chat IDs
@@ -70,19 +73,31 @@ The first time you run the bot, it will ask for your phone number and verificati
 
 ## Customization
 
-The bot uses a regex pattern to match messages. To modify it, edit the `PATTERN` variable in `bot.py`:
+### Filter Patterns
 
-```python
-PATTERN = r"your_custom_regex_pattern"
+The bot reads filter patterns from the `FILTER_PATTERNS` variable in your `.env` file. You can define multiple patterns separated by semicolons:
+
+```env
+FILTER_PATTERNS=🚨 ALERT: IMPORTANT;⚠️ WARNING: CHECK THIS;📢 NOTIFICATION: URGENT
 ```
+
+The bot automatically converts these simple text patterns into flexible regex patterns that can match variations in spacing and formatting. Just write the pattern as you expect to see it in messages, and the bot will handle the rest.
+
+### Pattern Matching
+
+- Patterns are case-insensitive
+- Spaces in patterns are flexible (will match multiple spaces, tabs, etc.)
+- Special characters are automatically escaped
+- You don't need to write regex - just write the text you want to match
 
 ## Logging
 
-The bot creates a log file named `passport_alerts.log` in the same directory. It logs:
+The bot creates a log file named `message_filter.log` in the same directory. It logs:
 - Bot startup and shutdown
 - Successfully forwarded messages
 - Errors and warnings
 - Configuration validation
+- Loaded filter patterns
 
 ## Session Management
 
@@ -96,18 +111,18 @@ For production use, consider running the bot as a systemd service or using a pro
 
 ### Example systemd service
 
-Create a file `/etc/systemd/system/passport-alerts.service`:
+Create a file `/etc/systemd/system/message-filter.service`:
 
 ```ini
 [Unit]
-Description=Passport Alerts Bot
+Description=Message Filter Bot
 After=network.target
 
 [Service]
 Type=simple
 User=your_user
-WorkingDirectory=/path/to/passport-alerts
-ExecStart=/usr/bin/python3 /path/to/passport-alerts/bot.py
+WorkingDirectory=/path/to/message-filter
+ExecStart=/usr/bin/python3 /path/to/message-filter/bot.py
 Restart=always
 RestartSec=10
 
@@ -119,8 +134,8 @@ Then run:
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable passport-alerts
-sudo systemctl start passport-alerts
+sudo systemctl enable message-filter
+sudo systemctl start message-filter
 ```
 
 ## Troubleshooting
@@ -139,7 +154,7 @@ sudo systemctl start passport-alerts
 
 ### Logs
 
-Check the log file `passport_alerts.log` for detailed error messages and debugging information.
+Check the log file `message_filter.log` for detailed error messages and debugging information.
 
 ## License
 
