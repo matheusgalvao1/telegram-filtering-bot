@@ -1,6 +1,6 @@
-# Passport Alerts Bot
+# Message Filtering Bot
 
-A Telegram userbot that filters passport availability alerts from one group and forwards relevant messages to another group.
+A Telegram userbot that filters messages from one group and forwards relevant messages to another group.
 
 ## Features
 
@@ -68,23 +68,9 @@ python bot.py
 
 The first time you run the bot, it will ask for your phone number and verification code to create a session file.
 
-## Configuration
+## Customization
 
-### Regex Pattern
-
-The bot uses the following regex pattern to match messages:
-```
-✅\s*(CURITIBA|FLORIAN[ÓO]POLIS)\s*:\s*PASSAPORTE
-```
-
-This pattern matches messages like:
-- "✅ CURITIBA: PASSAPORTE"
-- "✅ FLORIANÓPOLIS: PASSAPORTE"
-- "✅ FLORIANOPOLIS: PASSAPORTE"
-
-### Customization
-
-To modify the regex pattern, edit the `PATTERN` variable in `bot.py`:
+The bot uses a regex pattern to match messages. To modify it, edit the `PATTERN` variable in `bot.py`:
 
 ```python
 PATTERN = r"your_custom_regex_pattern"
@@ -155,10 +141,6 @@ sudo systemctl start passport-alerts
 
 Check the log file `passport_alerts.log` for detailed error messages and debugging information.
 
-## Contributing
-
-Feel free to submit issues and enhancement requests.
-
 ## License
 
-This project is for educational and personal use only. Please respect Telegram's Terms of Service when using this bot.
+This project is for personal use only. Please respect Telegram's Terms of Service when using this bot.
