@@ -1,6 +1,7 @@
 import re
 import os
 import logging
+import asyncio
 from dotenv import load_dotenv
 from telethon import TelegramClient, events
 
@@ -22,6 +23,8 @@ source_chat_id_str = os.getenv("SOURCE_CHAT_ID")
 destination_chat_id_str = os.getenv("DESTINATION_CHAT_ID")
 session_name = os.getenv("SESSION_NAME", "forwarder_session")
 message_template = os.getenv("MESSAGE_TEMPLATE", "{text}")
+repeat_count_str = os.getenv("ALERT_REPEAT_COUNT", "10")
+repeat_interval_seconds_str = os.getenv("ALERT_REPEAT_INTERVAL_SECONDS", "2")
 
 # Validate configuration
 required_vars = {
@@ -46,6 +49,18 @@ try:
 except ValueError as e:
     logger.error(f"Error converting environment variables to correct types: {e}")
     exit(1)
+
+try:
+    ALERT_REPEAT_COUNT: int = max(1, int(repeat_count_str))
+except ValueError:
+    logger.warning("Invalid ALERT_REPEAT_COUNT. Falling back to 10.")
+    ALERT_REPEAT_COUNT = 10
+
+try:
+    ALERT_REPEAT_INTERVAL_SECONDS: float = max(0.0, float(repeat_interval_seconds_str))
+except ValueError:
+    logger.warning("Invalid ALERT_REPEAT_INTERVAL_SECONDS. Falling back to 2.")
+    ALERT_REPEAT_INTERVAL_SECONDS = 2.0
 
 
 def create_regex_from_pattern(pattern: str) -> str:
@@ -118,8 +133,14 @@ async def forwarder(event):
 
                 try:
                     rewritten_text = rewrite_message(text)
-                    await client.send_message(DESTINATION_CHAT_ID, rewritten_text)
-                    logger.info("Rewritten message sent successfully")
+                    for attempt in range(ALERT_REPEAT_COUNT):
+                        await client.send_message(DESTINATION_CHAT_ID, rewritten_text)
+                        if attempt < ALERT_REPEAT_COUNT - 1:
+                            await asyncio.sleep(ALERT_REPEAT_INTERVAL_SECONDS)
+                    logger.info(
+                        f"Rewritten message sent {ALERT_REPEAT_COUNT} times "
+                        f"with {ALERT_REPEAT_INTERVAL_SECONDS}s interval"
+                    )
                 except Exception as e:
                     logger.error(f"Error sending rewritten message: {e}")
                 break
@@ -141,6 +162,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    import asyncio
-
     asyncio.run(main())

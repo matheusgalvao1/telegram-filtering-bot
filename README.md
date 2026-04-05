@@ -56,6 +56,11 @@ SESSION_NAME=forwarder_session
 # Available placeholders: {text}, {source_chat_id}, {destination_chat_id}
 MESSAGE_TEMPLATE=Passport alert:\n\n{text}
 
+# Re-send behavior for each regex match
+# Sends ALERT_REPEAT_COUNT messages with ALERT_REPEAT_INTERVAL_SECONDS between each
+ALERT_REPEAT_COUNT=10
+ALERT_REPEAT_INTERVAL_SECONDS=2
+
 # Message filter patterns (separate multiple patterns with semicolon)
 FILTER_PATTERNS=🚨 ALERT: IMPORTANT;⚠️ WARNING: CHECK THIS;📢 NOTIFICATION: URGENT
 ```
@@ -106,6 +111,17 @@ Available placeholders:
 - `{text}`: original matched message text
 - `{source_chat_id}`: configured source chat ID
 - `{destination_chat_id}`: configured destination chat ID
+
+### Re-send Burst
+
+For each match, the bot can send the rewritten message multiple times:
+
+```env
+ALERT_REPEAT_COUNT=10
+ALERT_REPEAT_INTERVAL_SECONDS=2
+```
+
+Set `ALERT_REPEAT_COUNT=1` to send only one message per match.
 
 ## Logging
 
