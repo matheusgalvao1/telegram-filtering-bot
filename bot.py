@@ -21,6 +21,7 @@ api_hash = os.getenv("API_HASH")
 source_chat_id_str = os.getenv("SOURCE_CHAT_ID")
 destination_chat_id_str = os.getenv("DESTINATION_CHAT_ID")
 session_name = os.getenv("SESSION_NAME", "forwarder_session")
+message_template = os.getenv("MESSAGE_TEMPLATE", "{text}")
 
 # Validate configuration
 required_vars = {
@@ -70,9 +71,7 @@ def create_regex_from_pattern(pattern: str) -> str:
 filter_patterns_str = os.getenv("FILTER_PATTERNS", "")
 
 if not filter_patterns_str:
-    logger.warning(
-        "No FILTER_PATTERNS defined in .env file. Bot will not forward any messages."
-    )
+    logger.warning("No FILTER_PATTERNS defined in .env file. Bot will not send any messages.")
     PATTERNS = []
 else:
     # Split patterns by semicolon and create regex patterns
@@ -86,9 +85,22 @@ else:
 client = TelegramClient(SESSION_NAME, API_ID, API_HASH)
 
 
+def rewrite_message(text: str) -> str:
+    """Build outbound message text from a configurable template."""
+    try:
+        return message_template.format(
+            text=text,
+            source_chat_id=SOURCE_CHAT_ID,
+            destination_chat_id=DESTINATION_CHAT_ID,
+        )
+    except KeyError as e:
+        logger.error(f"Invalid placeholder in MESSAGE_TEMPLATE: {e}. Falling back to raw text.")
+        return text
+
+
 @client.on(events.NewMessage)
 async def forwarder(event):
-    """Forward messages matching filter patterns."""
+    """Send rewritten messages when incoming messages match configured patterns."""
     # 1. Check if the message is from the specific Source Group
     if event.chat_id != SOURCE_CHAT_ID:
         return
@@ -101,16 +113,16 @@ async def forwarder(event):
         for pattern in PATTERNS:
             if re.search(pattern, text, re.IGNORECASE):
                 logger.info(
-                    f"Match found! Forwarding message from {SOURCE_CHAT_ID} to {DESTINATION_CHAT_ID}"
+                    f"Match found! Sending rewritten message from {SOURCE_CHAT_ID} to {DESTINATION_CHAT_ID}"
                 )
 
                 try:
-                    # Forward the message to the destination
-                    await event.message.forward_to(DESTINATION_CHAT_ID)
-                    logger.info("Message forwarded successfully")
+                    rewritten_text = rewrite_message(text)
+                    await client.send_message(DESTINATION_CHAT_ID, rewritten_text)
+                    logger.info("Rewritten message sent successfully")
                 except Exception as e:
-                    logger.error(f"Error forwarding message: {e}")
-                break  # Only forward once even if multiple patterns match
+                    logger.error(f"Error sending rewritten message: {e}")
+                break
 
 
 async def main():

@@ -1,12 +1,12 @@
 # Message Filtering Bot
 
-A Telegram userbot that filters messages from one group and forwards relevant messages to another group.
+A Telegram userbot that filters messages from one group and sends rewritten messages to another group.
 
 ## Features
 
 - Monitors a source Telegram group for specific messages
 - Filters messages using configurable patterns
-- Forwards matching messages to a destination group
+- Sends matching messages to a destination group
 - Configurable via environment variables
 - Comprehensive logging and error handling
 
@@ -47,10 +47,14 @@ API_HASH=your_api_hash_here  # Replace with your API Hash
 
 # Chat IDs
 SOURCE_CHAT_ID=-12345678  # Group to monitor
-DESTINATION_CHAT_ID=-87654321  # Group to forward messages to
+DESTINATION_CHAT_ID=-87654321  # Group to send messages to
 
 # Session file name (optional, defaults to 'forwarder_session')
 SESSION_NAME=forwarder_session
+
+# Outbound message template (optional)
+# Available placeholders: {text}, {source_chat_id}, {destination_chat_id}
+MESSAGE_TEMPLATE=Passport alert:\n\n{text}
 
 # Message filter patterns (separate multiple patterns with semicolon)
 FILTER_PATTERNS=🚨 ALERT: IMPORTANT;⚠️ WARNING: CHECK THIS;📢 NOTIFICATION: URGENT
@@ -90,11 +94,24 @@ The bot automatically converts these simple text patterns into flexible regex pa
 - Special characters are automatically escaped
 - You don't need to write regex - just write the text you want to match
 
+### Outbound Message Rewrite
+
+The bot sends a brand-new message (it does not forward) using the `MESSAGE_TEMPLATE` from `.env`.
+
+```env
+MESSAGE_TEMPLATE=Passport alert:\n\n{text}
+```
+
+Available placeholders:
+- `{text}`: original matched message text
+- `{source_chat_id}`: configured source chat ID
+- `{destination_chat_id}`: configured destination chat ID
+
 ## Logging
 
 The bot creates a log file named `message_filter.log` in the same directory. It logs:
 - Bot startup and shutdown
-- Successfully forwarded messages
+- Successfully sent rewritten messages
 - Errors and warnings
 - Configuration validation
 - Loaded filter patterns
@@ -148,7 +165,7 @@ sudo systemctl start message-filter
 
 3. **Incorrect Chat IDs**: Verify the Chat IDs using the @getmyid_bot
 
-4. **Permission issues**: Make sure the bot has been added to both groups and has permission to read messages in the source group and forward messages to the destination group
+4. **Permission issues**: Make sure the bot has been added to both groups and has permission to read messages in the source group and send messages to the destination group
 
 5. **Session file issues**: If you have login problems, delete the `.session` file and restart the bot
 
