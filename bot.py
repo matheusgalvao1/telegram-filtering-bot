@@ -25,6 +25,7 @@ session_name = os.getenv("SESSION_NAME", "forwarder_session")
 message_template = os.getenv("MESSAGE_TEMPLATE", "{text}")
 repeat_count_str = os.getenv("ALERT_REPEAT_COUNT", "10")
 repeat_interval_seconds_str = os.getenv("ALERT_REPEAT_INTERVAL_SECONDS", "2")
+source_topic_ids_str = os.getenv("SOURCE_TOPIC_IDS", "")
 
 # Validate configuration
 required_vars = {
@@ -61,6 +62,24 @@ try:
 except ValueError:
     logger.warning("Invalid ALERT_REPEAT_INTERVAL_SECONDS. Falling back to 2.")
     ALERT_REPEAT_INTERVAL_SECONDS = 2.0
+
+try:
+    SOURCE_TOPIC_IDS = {
+        int(part.strip())
+        for part in source_topic_ids_str.split(",")
+        if part.strip()
+    }
+except ValueError:
+    logger.error(
+        "Invalid SOURCE_TOPIC_IDS. Use comma-separated topic IDs, e.g. 123456,789012."
+    )
+    exit(1)
+
+if SOURCE_TOPIC_IDS:
+    logger.info(
+        "Only watching source topic IDs: "
+        + ", ".join(str(topic_id) for topic_id in sorted(SOURCE_TOPIC_IDS))
+    )
 
 
 def create_regex_from_pattern(pattern: str) -> str:
@@ -113,6 +132,24 @@ def rewrite_message(text: str) -> str:
         return text
 
 
+def get_topic_id(message):
+    """Return the forum topic ID for a message, or None if it is not in a topic."""
+    reply = getattr(message, "reply_to", None)
+    if reply is None:
+        return None
+
+    # A reply inside a topic stores the topic ID here.
+    topic_id = getattr(reply, "reply_to_top_id", None)
+    if topic_id is not None:
+        return topic_id
+
+    # The first message of a topic stores the topic ID as reply_to_msg_id.
+    if getattr(reply, "forum_topic", False):
+        return getattr(reply, "reply_to_msg_id", None)
+
+    return None
+
+
 @client.on(events.NewMessage)
 async def forwarder(event):
     """Send rewritten messages when incoming messages match configured patterns."""
@@ -120,15 +157,24 @@ async def forwarder(event):
     if event.chat_id != SOURCE_CHAT_ID:
         return
 
-    # 2. Get message text
+    # 2. If configured, only handle messages inside the selected forum topics
+    topic_id = None
+    if SOURCE_TOPIC_IDS:
+        topic_id = get_topic_id(event.message)
+        if topic_id not in SOURCE_TOPIC_IDS:
+            return
+
+    # 3. Get message text
     text = event.text
 
-    # 3. Check if text exists and matches any pattern
+    # 4. Check if text exists and matches any pattern
     if text and PATTERNS:
         for pattern in PATTERNS:
             if re.search(pattern, text, re.IGNORECASE):
+                topic_info = f" in topic {topic_id}" if topic_id is not None else ""
                 logger.info(
-                    f"Match found! Sending rewritten message from {SOURCE_CHAT_ID} to {DESTINATION_CHAT_ID}"
+                    f"Match found{topic_info}! Sending rewritten message "
+                    f"from {SOURCE_CHAT_ID} to {DESTINATION_CHAT_ID}"
                 )
 
                 try:
@@ -150,6 +196,11 @@ async def main():
     """Main function to start the bot."""
     logger.info("Starting message filter bot...")
     logger.info(f"Source chat ID: {SOURCE_CHAT_ID}")
+    if SOURCE_TOPIC_IDS:
+        logger.info(
+            "Source topic IDs: "
+            + ", ".join(str(topic_id) for topic_id in sorted(SOURCE_TOPIC_IDS))
+        )
     logger.info(f"Destination chat ID: {DESTINATION_CHAT_ID}")
 
     try:

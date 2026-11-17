@@ -6,6 +6,7 @@ A Telegram userbot that filters messages from one group and sends rewritten mess
 
 - Monitors a source Telegram group for specific messages
 - Filters messages using configurable patterns
+- Optionally restricts alerts to specific forum topics
 - Sends matching messages to a destination group
 - Configurable via environment variables
 - Comprehensive logging and error handling
@@ -49,12 +50,16 @@ API_HASH=your_api_hash_here  # Replace with your API Hash
 SOURCE_CHAT_ID=-12345678  # Group to monitor
 DESTINATION_CHAT_ID=-87654321  # Group to send messages to
 
+# Optional: restrict alerts to specific forum topics (comma-separated topic IDs)
+# Leave unset to watch every topic in the source chat.
+# SOURCE_TOPIC_IDS=123456,789012
+
 # Session file name (optional, defaults to 'forwarder_session')
 SESSION_NAME=forwarder_session
 
 # Outbound message template (optional)
 # Available placeholders: {text}, {source_chat_id}, {destination_chat_id}
-MESSAGE_TEMPLATE=Passport alert:\n\n{text}
+MESSAGE_TEMPLATE="Alert:\n\n{text}"
 
 # Re-send behavior for each regex match
 # Sends ALERT_REPEAT_COUNT messages with ALERT_REPEAT_INTERVAL_SECONDS between each
@@ -71,6 +76,8 @@ FILTER_PATTERNS=🚨 ALERT: IMPORTANT;⚠️ WARNING: CHECK THIS;📢 NOTIFICATI
 2. Add the bot to both your source and destination groups
 3. Send a message in each group
 4. The bot will reply with the chat ID
+
+For a forum, the chat ID is the same for every topic. Use a topic message link to get the topic IDs for `SOURCE_TOPIC_IDS` (see [Forum Topics](#forum-topics)).
 
 ### 4. Run the Bot
 
@@ -92,6 +99,24 @@ FILTER_PATTERNS=🚨 ALERT: IMPORTANT;⚠️ WARNING: CHECK THIS;📢 NOTIFICATI
 
 The bot automatically converts these simple text patterns into flexible regex patterns that can match variations in spacing and formatting. Just write the pattern as you expect to see it in messages, and the bot will handle the rest.
 
+### Forum Topics
+
+If the source group is a forum (it has topics/sub-groups), you can limit the bot to specific topics:
+
+```env
+SOURCE_TOPIC_IDS=123456,789012
+```
+
+When this is set, messages outside those topics are ignored. This is useful when the same announcement is posted both in a general topic and in a more specific topic: without it, the bot would send one burst per matching topic.
+
+When `SOURCE_TOPIC_IDS` is unset or empty, every topic is watched (the previous behavior). To find a topic ID, copy a message link inside the topic:
+
+```
+https://t.me/c/<chat_id>/<topic_id>/<message_id>
+```
+
+The middle number is the topic ID. The chat ID is the same for every topic in the forum.
+
 ### Pattern Matching
 
 - Patterns are case-insensitive
@@ -104,8 +129,10 @@ The bot automatically converts these simple text patterns into flexible regex pa
 The bot sends a brand-new message (it does not forward) using the `MESSAGE_TEMPLATE` from `.env`.
 
 ```env
-MESSAGE_TEMPLATE=Passport alert:\n\n{text}
+MESSAGE_TEMPLATE="Alert:\n\n{text}"
 ```
+
+Double-quoted values let `\n` become a real newline; unquoted values keep it literal.
 
 Available placeholders:
 - `{text}`: original matched message text
